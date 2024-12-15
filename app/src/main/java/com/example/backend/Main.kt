@@ -20,6 +20,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.coroutines.runBlocking
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.plugins.cors.routing.*
+import io.ktor.http.*
 
 
 fun main() {
@@ -29,7 +31,7 @@ fun main() {
         println("Failed to initialize Firebase: ${e.message}")
         return
     }
-    embeddedServer(Netty, port = 8080) {
+    embeddedServer(Netty, host = "0.0.0.0", port = 8080) {
         install(ContentNegotiation) {
             json(Json {
                 prettyPrint = true
@@ -46,6 +48,14 @@ fun Application.configureRouting() {
     val FirebaseManager = FirebaseManager()
     val movieManager = MovieManager("74dfc29543d4486989f41799ebf80d18")
 
+    install(CORS) {
+        anyHost()
+        allowHeader(HttpHeaders.ContentType)
+        allowHeader(HttpHeaders.Authorization)
+        allowMethod(HttpMethod.Post)
+        allowMethod(HttpMethod.Get)
+        allowMethod(HttpMethod.Delete)
+    }
 
     routing {
         // Root endpoint for health check
@@ -56,12 +66,15 @@ fun Application.configureRouting() {
         // Register a user
         post("/register") {
             val request = call.receive<UserRequest>()
+            println("Registering user: ${request.username}")
+
             val firebaseResult = FirebaseManager.createUser(request.username, request.password)
             if (firebaseResult) {
                 val result = mongoManager.createUser(request.username, request.password)
                 call.respond(mapOf("success" to result))
             } else {
-                call.respondText("Failed to register user in Firebase.", status = io.ktor.http.HttpStatusCode.InternalServerError)
+                println("Firebase user creation failed for: ${request.username}")
+                call.respondText("Failed to register user in Firebase.", status = HttpStatusCode.InternalServerError)
             }
         }
 
@@ -74,10 +87,10 @@ fun Application.configureRouting() {
                 if(password == request.password){
                     call.respond(mapOf("success" to true, "message" to "User logged in successfully."))
                 }else{
-                    call.respondText("Invalid email or password.", status = io.ktor.http.HttpStatusCode.Unauthorized)
+                    call.respondText("Invalid email or password.1", status = io.ktor.http.HttpStatusCode.Unauthorized)
                 }
             } else {
-                call.respondText("Invalid email or password.", status = io.ktor.http.HttpStatusCode.Unauthorized)
+                call.respondText("Invalid email or password.2", status = io.ktor.http.HttpStatusCode.Unauthorized)
             }
         }
 
@@ -125,11 +138,21 @@ fun Application.configureRouting() {
             call.respond(mapOf("success" to result))
         }
 
+        // Fetch a user's favorite movies
+        get("/user/{username}/favorites") {
+            val username = call.parameters["username"] ?: return@get call.respondText(
+                "Missing username", status = HttpStatusCode.BadRequest
+            )
+            val favoriteMovies = runBlocking { mongoManager.getFavoriteMovies(username) }
+            call.respond(favoriteMovies)
+        }
+
         // Disconnect MongoDB when the application stops
         environment?.monitor?.subscribe(ApplicationStopped) {
             mongoManager.close()
         }
 
+        // Fetch popular movies
         get("/movies/popular") {
             val movies = movieManager.getPopularMovies()
             call.respond(movies)

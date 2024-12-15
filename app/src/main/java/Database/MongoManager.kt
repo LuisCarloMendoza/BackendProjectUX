@@ -87,8 +87,17 @@ class MongoManager(
 
     suspend fun getPasswordByUsername(username: String): String? = withContext(Dispatchers.IO) {
         try {
+            println("Searching for user with username: $username")
             val user = userCollection.find(eq("username", username)).firstOrNull()
-            user?.getString("password")
+
+            if (user != null) {
+                val password = user.getString("password")
+                println("User found: $username, Password: $password")
+                password
+            } else {
+                println("No user found with username: $username")
+                null
+            }
         } catch (e: Exception) {
             println("Error retrieving password for user $username: ${e.message}")
             null
@@ -103,7 +112,24 @@ class MongoManager(
             println("Error closing MongoDB connection: ${e.message}")
         }
     }
+
+    suspend fun getFavoriteMovies(username: String): List<Movie> = withContext(Dispatchers.IO) {
+        try {
+            val user = userCollection.find(eq("username", username)).firstOrNull()
+            val movies = user?.getList("movies", Document::class.java)?.map {
+                Movie(
+                    id = it.getInteger("id"),
+                    nombre = it.getString("nombre")
+                )
+            } ?: emptyList()
+            movies
+        } catch (e: Exception) {
+            println("Error retrieving favorite movies for user $username: ${e.message}")
+            emptyList()
+        }
+    }
 }
+
 
 data class Movie(
     val id: Int,

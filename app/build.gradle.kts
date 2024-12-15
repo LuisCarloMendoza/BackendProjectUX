@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("com.google.gms.google-services")
+    kotlin("plugin.serialization") version "1.9.0"
 }
 
 android {
@@ -52,6 +53,8 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     implementation("org.mongodb:mongodb-driver-kotlin-coroutine:5.2.1")
     implementation("org.mongodb:bson-kotlin:5.2.1")
+    implementation("io.projectreactor:reactor-core:3.5.10")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactive:1.7.3")
     implementation("io.ktor:ktor-server-core:2.3.0")
     implementation("io.ktor:ktor-server-netty:2.3.0")
     implementation("io.ktor:ktor-server-content-negotiation:2.3.0")
@@ -64,4 +67,6 @@ dependencies {
     implementation ("com.google.firebase:firebase-admin:9.4.2")
     implementation("com.google.auth:google-auth-library-oauth2-http:1.16.0")
     implementation("org.slf4j:slf4j-simple:2.0.7")
+    implementation("io.ktor:ktor-server-cors:2.3.0")
+
 }

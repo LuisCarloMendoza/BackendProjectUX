@@ -9,17 +9,24 @@ class FirebaseManager {
     private val auth = FirebaseAuth.getInstance()
 
     fun createUser(username: String?, password: String?): Boolean {
-        try {
+        return try {
             val request = UserRecord.CreateRequest()
                 .setEmail(username)
                 .setPassword(password)
 
             val user: UserRecord = auth.createUser(request)
-            println("User created successfully: " + user.uid)
-            return true
+            println("User created successfully: ${user.uid}")
+            true
+        } catch (e: FirebaseAuthException) {
+            if (e.errorCode?.equals("EMAIL_ALREADY_EXISTS") == true) {
+                println("User already exists: $username")
+            } else {
+                println("Error creating user: ${e.errorCode} - ${e.message}")
+            }
+            false
         } catch (e: Exception) {
-            System.err.println("Error creating user: " + e.message)
-            return false
+            println("General error: ${e.message}")
+            false
         }
     }
 
